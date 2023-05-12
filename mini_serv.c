@@ -14,7 +14,7 @@
 int		maxfd, sockfd, id = 0;
 int		client_ids[1024];
 char	toWrite[BUFF];
-fd_set	readS, writeS;
+fd_set	readS, writeS, actvieS;
 
 void	error(char *msg)
 {
@@ -55,14 +55,14 @@ int main(int ac, char **av)
 		error(FATAL);
 
     len = sizeof(cliaddr);
-	FD_ZERO(&readS);
-    FD_ZERO(&writeS);
+	FD_ZERO(&activeS);
 	FD_SET(sockfd, &readS);
-    FD_SET(sockfd, &writeS);
+
     maxfd = sockfd;
 
     while (1)
 	{
+        readS = writeS = activeS;
 		if (select(maxfd + 1, &readS, &writeS, NULL, NULL) < 0)
 			continue;
 
@@ -75,8 +75,7 @@ int main(int ac, char **av)
 		        {
 			        if ((clifd = accept(sockfd, (struct sockaddr *)&cliaddr, &len)) < 0)
 				        error(FATAL);
-                    FD_SET(clifd, &readS);
-                    FD_SET(clifd, &writeS);
+                    FD_SET(clifd, &activeS);
 			        maxfd = (clifd > maxfd) ? clifd : maxfd;
                     client_ids[clifd] = id++;
 
@@ -93,8 +92,7 @@ int main(int ac, char **av)
                         memset(&toWrite, 0, BUFF);
                         sprintf(toWrite, "server: client %d just left\n", client_ids[fd]);
                         sendAll(fd);
-                        FD_CLR(fd, &readS);
-                        FD_CLR(fd, &writeS);
+                        FD_CLR(fd, &activeS);
                         close(fd);
                         client_ids[fd] = 0;
                     }
